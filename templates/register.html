@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<form method="post" action="/users" class="registration-form">
+	<fieldset>
+		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ userForm.username }}"></p>
+		<p><label for="email">Email:</label> <input type="text" name="email" value = "{{ userForm.email }}"></p>
+		<p><label for="password">Password:</label> <input type="password" name="password" value = ""></p>
+		<p><label for="password_verify">Verify:</label> <input type="password" name="password_verify" value = ""></p>
+		<input type="submit">
+	</fieldset>
+</form>
+
+{% endblock %}

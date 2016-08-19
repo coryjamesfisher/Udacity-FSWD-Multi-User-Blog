@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{{coolname}}
+<ul>
+	{% for post in posts %}
+	<li>{{ post.title }}</li>
+	{% endfor %}
+</ul>
+{% endblock %}

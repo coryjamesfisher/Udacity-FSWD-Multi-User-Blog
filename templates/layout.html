@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Blogtastic</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css">
+		<style>
+			body { font-size: 16px; }
+			.registration-form label { width: 6em; text-align: right; display: inline-block; }
+			.registration-form fieldset { width: 31.25em; }
+			.registration-form input[type=submit] { margin-left: 16em; }
+
+			.auth-form label { width: 6em; text-align: right; display: inline-block; }
+			.auth-form fieldset { width: 31.25em; }
+			.auth-form input[type=submit] { margin-left: 16em; }
+
+		</style>
+	</head>
+	<body>
+		<header>
+			<h1>Blogtastic</h1>
+		</header>
+		<main>
+		{% block content %}
+		{% endblock %}
+		</main>
+		<footer>
+			&copy; 2016 Cory Fisher
+		</footer>
+	</body>
+</html>
