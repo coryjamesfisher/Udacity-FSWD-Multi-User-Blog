@@ -4,8 +4,8 @@
 
 <form method="post" action="/auth" class="auth-form">
 	<fieldset>
-		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ authForm.username }}"></p>
-		<p><label for="password">Password:</label> <input type="password" name="password" value = ""></p>
+		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ authForm.username }}"> {{ authForm.username_error }}</p>
+		<p><label for="password">Password:</label> <input type="password" name="password" value = ""> {{ authForm.password_error }}</p>
 		<input type="submit">
 	</fieldset>
 </form>
