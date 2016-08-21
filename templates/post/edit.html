@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<form method="post" action="/post" class="post-form">
+	<fieldset>
+		{% if postForm.post_key %}
+			<input type="hidden" name="post_key" value="{{ postForm.post_key }}">     
+		{% endif %}
+		<p><label for="title">Title:</label> <input type="text" name="title" value = "{{ postForm.title }}"> {{ postForm.title_error }}</p>
+		<p><label for="content">Content:</label> <textarea name="content">{{ postForm.content }}</textarea> {{ postForm.content_error }}</p>
+		<input type="submit">
+	</fieldset>
+</form>
+
+{% endblock %}

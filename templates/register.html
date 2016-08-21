@@ -4,10 +4,10 @@
 
 <form method="post" action="/users" class="registration-form">
 	<fieldset>
-		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ userForm.username }}"> {{ userForm.username_error }}</p>
-		<p><label for="email">Email:</label> <input type="text" name="email" value = "{{ userForm.email }}"> {{ userForm.email_error }}</p>
-		<p><label for="password">Password:</label> <input type="password" name="password" value = ""> {{ userForm.password_error }}</p>
-		<p><label for="password_verify">Verify:</label> <input type="password" name="password_verify" value = ""> {{ userForm.password_verify_error }}</p>
+		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ registerForm.username }}"> {{ registerForm.username_error }}</p>
+		<p><label for="email">Email:</label> <input type="text" name="email" value = "{{ registerForm.email }}"> {{ registerForm.email_error }}</p>
+		<p><label for="password">Password:</label> <input type="password" name="password" value = ""> {{ registerForm.password_error }}</p>
+		<p><label for="password_verify">Verify:</label> <input type="password" name="password_verify" value = ""> {{ registerForm.password_verify_error }}</p>
 		<input type="submit">
 	</fieldset>
 </form>

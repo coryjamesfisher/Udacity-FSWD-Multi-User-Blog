@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<p>Please Log In</p>
+<form method="post" action="/login" class="login-form">
+	<fieldset>
+		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ loginForm.username }}"> {{ loginForm.username_error }}</p>
+		<p><label for="password">Password:</label> <input type="password" name="password" value = ""> {{ loginForm.password_error }}</p>
+		<input type="submit">
+	</fieldset>
+</form>
+
+{% endblock %}

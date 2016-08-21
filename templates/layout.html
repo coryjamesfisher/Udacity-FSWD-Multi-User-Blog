@@ -6,20 +6,58 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css">
 		<style>
-			body { font-size: 16px; }
+			body { font-size: 16px; max-width: 1140px; margin-left: auto; margin-right: auto; }
+                        main { clear: both; }
 			.registration-form label { width: 6em; text-align: right; display: inline-block; }
 			.registration-form fieldset { width: 31.25em; }
 			.registration-form input[type=submit] { margin-left: 16em; }
 
-			.auth-form label { width: 6em; text-align: right; display: inline-block; }
-			.auth-form fieldset { width: 31.25em; }
-			.auth-form input[type=submit] { margin-left: 16em; }
+			.login-form label { width: 6em; text-align: right; display: inline-block; }
+			.login-form fieldset { width: 31.25em; }
+			.login-form input[type=submit] { margin-left: 16em; }
+
+			.post-form label { width: 6em; text-align: right; display: inline-block; }
+			.post-form fieldset { width: 31.25em; }
+			.post-form input[type=submit] { margin-left: 16em; }
+
+                        header h1 { float: left; width: 50%; font-size: 2em; font-weight: bold; }
+                        header h2 { float: left; width: 100%; font-size: 1.5em; font-weight: bold; }
+                        .user-tray { float: right; width: 50%; text-align: right; }
+
+			.post-heading .post-link { text-decoration: none; }
+			.post-heading .post-link:hover { text-decoration: underline; }
+			.post { margin-bottom: 5em; }
+			.user-tray .user-own-posts-link { text-decoration: none; }
+			.user-tray .user-own-posts-link:hover { text-decoration: underline; }
+
+			.main-menu { float: left; width: 100%; font-size: 1.2em; font-weight: bold; }
+			.main-menu a { margin-left: 10px; }
+
+			.post-actions textarea { width: 100%; }
 
 		</style>
 	</head>
 	<body>
 		<header>
 			<h1>Blogtastic</h1>
+					
+			<section class="user-tray">
+				{% if user %}
+                                    Welcome, <a class="user-own-posts-link" href="/posts?owner={{ user.username }}">{{ user.username }}</a> <a href="/logout">Logout</a>
+                                {% endif %}
+                        </section>
+
+			<nav class="main-menu">
+				<a href="/posts">All Posts</a>
+				{% if user %}<a href="/posts?owner={{ user.username }}">Your Posts</a>{% endif %}
+			</nav>
+
+			{% block pageTitle %}
+				{% if pageTitle %}
+					<h2 class="page-title">{{ pageTitle }}</h2>
+				{% endif %}
+			{% endblock %}
+
 		</header>
 		<main>
 		{% block content %}

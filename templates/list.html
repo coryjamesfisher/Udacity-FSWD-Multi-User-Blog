@@ -4,7 +4,10 @@
 {{coolname}}
 <ul>
 	{% for post in posts %}
-	<li>{{ post.title }}</li>
+	<li>
+                {% set nested = 1 %}
+		{% include "post/view.html" %}
+	</li>
 	{% endfor %}
 </ul>
 {% endblock %}

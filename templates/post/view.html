@@ -1,0 +1,55 @@
+{% if not nested %}
+	{% extends "layout.html" %}
+	{% block pageTitle %}
+		<h2 class="page-title">{{ post.title }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a></h2>
+	{% endblock %}
+{% endif %}
+
+{% block content %}
+<article class="post" id="{{ post.key.urlsafe() }}">
+
+	{% if nested == 1 %}
+	<h3 class="post-heading">
+		<a class="post-link" href="/post?post_key={{ post.key.urlsafe() }}">{{ post.title }}</a>
+		 by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
+	</h3>
+	{% endif %}
+	<section class="post-content">
+		{{ post.content | safe }}
+	</section>
+
+	{% if not nested %}
+	<h4>Comments</h4>
+	<section class="post-comments">
+		{% if comments %}
+			<ul>
+			{% for comment in comments %}
+				<li>
+					{{ comment.owner }} - {{ comment.content }}
+				</li>
+			{% endfor %}
+			</ul>
+		{% endif %}
+	</section>
+
+	<form class="post-actions" action="/comment" method="post">
+
+		<input type="hidden" name="post" value="{{ post.key.urlsafe() }}">
+		<textarea name="content"></textarea>
+
+		{% if not user %}
+			<button onclick="document.location.href='/login?return_url={{ ("/posts#comment=" + post.key.urlsafe()) | urlencode }}'">Add Comment</button>
+		{% else %}
+			{% if user.username == post.owner %}
+				<button onclick="document.location.href='/post?post_key={{ post.key.urlsafe() }}&edit=1'">Edit Post</button>
+			{% endif %}
+			<button type="submit">Add Comment</button>
+			{% if user.username == post.owner %}
+				<button onclick="">Delete Post</button>
+			{% endif %}
+		{% endif %}
+            
+	</form>
+	{% endif %}
+</article>
+{% endblock %}

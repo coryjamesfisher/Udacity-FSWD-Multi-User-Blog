@@ -5,13 +5,22 @@ api_version: 1
 threadsafe: yes
 
 handlers:
-- url: /users
+- url: /register
   script: main.app
 
 - url: /posts
   script: main.app
 
-- url: /auth
+- url: /post
+  script: main.app
+
+- url: /comment
+  script: main.app
+
+- url: /login
+  script: main.app
+
+- url: /logout
   script: main.app
 
 libraries:
