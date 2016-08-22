@@ -53,7 +53,7 @@ class Handler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         username = self.read_secure_cookie('username')
-        self.user = username and User.query(User.username == username).get()
+        self.user = username and User.query(ancestor = ndb.Key("User", "Junk")).filter(User.username == username).get()
 
 # ENDPOINTS
 class PostListHandler(Handler):
@@ -66,42 +66,81 @@ class PostListHandler(Handler):
             ancestor = ndb.Key(User, self.request.get("owner"))
             pageTitle = "All Posts - " + self.request.get("owner")
             
-
         query = Post.query(ancestor = ancestor).order(-Post.created)
         posts = query.fetch(10, offset = 0)
         self.render("list.html", posts=posts, pageTitle = pageTitle)
 
 
 class PostHandler(Handler):
-    def get(self):
-        post = None
-        comments = None
 
-        if not self.user:
-            print "No User - Access Denied"
-            return
+    def doCreate(self):
+        postForm = PostForm(None)
+        self.render("post/edit.html", postForm = postForm)
 
-        if self.request.get("post_key", "") != "":
-            postKey = ndb.Key(urlsafe = self.request.get("post_key"))
-            post = postKey.get()
-            comments = Comment.query(ancestor = postKey).fetch(100)
+    def doEdit(self):
+        
+        if not self.request.get("post"):
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
 
-        if not self.request.get("edit", ""):
-            if not post:
-                self.redirect('/posts')
-                return
+        postKey = ndb.Key(urlsafe = self.request.get("post"))
+        post = postKey.get()
 
-            self.render("post/view.html", post = post, comments = comments)
-            return
+        if post.owner != self.user.username:
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
 
         postForm = PostForm(None)
-
-        if post and post.owner == self.user.username:
-	    postForm.post_key = post.key.urlsafe()
-            postForm.title = post.title
-            postForm.content = post.content
+        postForm.title = post.title
+        postForm.content = post.content
+        postForm.post = self.request.get("post")
 
         self.render("post/edit.html", postForm = postForm)
+
+    def doDelete(self):
+
+        if not self.request.get("post"):
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
+
+        postKey = ndb.Key(urlsafe = self.request.get("post"))
+        post = postKey.get()
+
+        if post.owner != self.user.username:
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
+
+        postKey.delete() 
+        print "deleted post redirecting"
+        self.redirect("/posts")
+
+    def doView(self):
+
+        if not self.request.get("post"):
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
+
+        postKey = ndb.Key(urlsafe = self.request.get("post"))
+        post = postKey.get()
+        comments = Comment.query(ancestor = postKey).fetch(100)
+
+        self.render("post/view.html", post = post, comments = comments)
+
+
+    def get(self):
+        action = self.request.get("action", "")
+
+        if action == 'create':
+            return self.doCreate()
+
+        if action == "edit":
+            return self.doEdit()
+
+        if action == "delete":
+            return self.doDelete()
+
+
+	return self.doView()
 
     def post(self):
         postForm = PostForm(self.request.POST)
@@ -110,24 +149,26 @@ class PostHandler(Handler):
             self.render("post/edit.html", postForm = postForm)
             return
 
-        if postForm.post_key:
-            postKey = ndb.Key(urlsafe = self.request.get("post_key"))
+        if postForm.post:
+            postKey = ndb.Key(urlsafe = self.request.get("post"))
             post = postKey.get()
 
             if post.owner != self.user.username:
                 # todo add error message
-                self.redirect('/post?post_key=' + post.key.urlsafe())
+                self.redirect('/post?post=' + post.key.urlsafe())
                 return
 
         else:
-            post.owner = self.user.username
-            postId = ndb.Model.allocate_ids(size=1, parent=self.user.key)[0]
-            post.key = ndb.Key("Post", postId, parent=self.user.key)
+            userKey = ndb.Key(User, self.user.username)
+            postId = ndb.Model.allocate_ids(size=1, parent=userKey)[0]
+            postKey = ndb.Key(Post, postId, parent = userKey)
+            post = Post(owner = self.user.username, key = postKey)
 
         post.title = postForm.title 
         post.content = postForm.content
         post.put()
-        self.redirect('/post?post_key=' + post.key.urlsafe())
+        self.redirect('/posts?owner=' + self.user.username)
+        #self.redirect('/post?post=' + post.key.urlsafe())
 
 
 class CommentHandler(Handler):
@@ -147,7 +188,7 @@ class CommentHandler(Handler):
         comment.key = ndb.Key("Comment", commentId, parent=postKey)
 
         comment.put()
-        self.redirect('/post?post_key=' + commentForm.post)
+        self.redirect('/post?post=' + commentForm.post)
 
 
 class RegisterHandler(Handler):
@@ -176,7 +217,7 @@ class LoginHandler(Handler):
             self.render("login.html", loginForm = loginForm)
             return
 
-        user = User.query(User.username == loginForm.username, User.password == hmac.new(SECRET, loginForm.password).hexdigest()).get()
+        user = User.query(ancestor = ndb.Key("User", "Junk")).filter(User.username == loginForm.username, User.password == hmac.new(SECRET, loginForm.password).hexdigest()).get()
 
         if not user:
             loginForm.username_error = "Incorrect username or password"
@@ -230,7 +271,7 @@ class RegisterForm:
         return valid
 
     def toModel(self):
-        return User(username = self.username, email = self.email, password = hmac.new(SECRET, self.password).hexdigest(), id = self.username)
+        return User(username = self.username, email = self.email, password = hmac.new(SECRET, self.password).hexdigest(), id = self.username, parent = ndb.Key("User", "Junk"))
 
 class LoginForm:
     def __init__(self, post_data):
@@ -262,14 +303,14 @@ class PostForm:
 
         self.title = ""
         self.content = ""
-        self.post_key = ""
+        self.post = ""
         self.title_error = ""
         self.content_error = ""
         
         if post_data is not None:
             self.title = post_data.get("title", "")
             self.content = post_data.get("content", "")
-            self.post_key = post_data.get("post_key", "")
+            self.post = post_data.get("post", "")
 
     def validate(self):
 

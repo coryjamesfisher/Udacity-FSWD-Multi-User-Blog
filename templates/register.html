@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<form method="post" action="/users" class="registration-form">
+<form method="post" action="/register" class="registration-form">
 	<fieldset>
 		<p><label for="username">Username:</label> <input type="text" name="username" value = "{{ registerForm.username }}"> {{ registerForm.username_error }}</p>
 		<p><label for="email">Email:</label> <input type="text" name="email" value = "{{ registerForm.email }}"> {{ registerForm.email_error }}</p>

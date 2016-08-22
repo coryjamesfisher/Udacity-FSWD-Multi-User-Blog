@@ -20,8 +20,9 @@
 			.post-form fieldset { width: 31.25em; }
 			.post-form input[type=submit] { margin-left: 16em; }
 
+			header { width: 100%; float: left; background-color: yellow }
                         header h1 { float: left; width: 50%; font-size: 2em; font-weight: bold; }
-                        header h2 { float: left; width: 100%; font-size: 1.5em; font-weight: bold; }
+                        .page-title { float: left; width: 100%; font-size: 1.5em; font-weight: bold; }
                         .user-tray { float: right; width: 50%; text-align: right; }
 
 			.post-heading .post-link { text-decoration: none; }
@@ -30,7 +31,7 @@
 			.user-tray .user-own-posts-link { text-decoration: none; }
 			.user-tray .user-own-posts-link:hover { text-decoration: underline; }
 
-			.main-menu { float: left; width: 100%; font-size: 1.2em; font-weight: bold; }
+			.main-menu { float: left; width: 100%; font-size: 1.2em; font-weight: bold; background-color: lightblue; }
 			.main-menu a { margin-left: 10px; }
 
 			.post-actions textarea { width: 100%; }
@@ -44,22 +45,28 @@
 			<section class="user-tray">
 				{% if user %}
                                     Welcome, <a class="user-own-posts-link" href="/posts?owner={{ user.username }}">{{ user.username }}</a> <a href="/logout">Logout</a>
+                                {% else %}
+                                    Welcome guest. Please <a href="/register">Register</a> or <a href="/login">Login</a> to post.
                                 {% endif %}
                         </section>
 
 			<nav class="main-menu">
 				<a href="/posts">All Posts</a>
-				{% if user %}<a href="/posts?owner={{ user.username }}">Your Posts</a>{% endif %}
-			</nav>
-
-			{% block pageTitle %}
-				{% if pageTitle %}
-					<h2 class="page-title">{{ pageTitle }}</h2>
+				{% if user %}
+					<a href="/posts?owner={{ user.username }}">Your Posts</a>
+					<a href="/post?action=create">Create Post</a>
 				{% endif %}
-			{% endblock %}
+			</nav>
 
 		</header>
 		<main>
+
+		{% block pageTitle %}
+			{% if pageTitle %}
+				<h2 class="page-title">{{ pageTitle }}</h2>
+			{% endif %}
+		{% endblock %}
+
 		{% block content %}
 		{% endblock %}
 		</main>

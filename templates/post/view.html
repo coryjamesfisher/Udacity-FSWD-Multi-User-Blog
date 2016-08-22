@@ -10,7 +10,7 @@
 
 	{% if nested == 1 %}
 	<h3 class="post-heading">
-		<a class="post-link" href="/post?post_key={{ post.key.urlsafe() }}">{{ post.title }}</a>
+		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a>
 		 by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
 	</h3>
 	{% endif %}
@@ -41,11 +41,11 @@
 			<button onclick="document.location.href='/login?return_url={{ ("/posts#comment=" + post.key.urlsafe()) | urlencode }}'">Add Comment</button>
 		{% else %}
 			{% if user.username == post.owner %}
-				<button onclick="document.location.href='/post?post_key={{ post.key.urlsafe() }}&edit=1'">Edit Post</button>
+				<button onclick="document.location.href='/post?post={{ post.key.urlsafe() }}&action=edit'; return false;">Edit Post</button>
 			{% endif %}
 			<button type="submit">Add Comment</button>
 			{% if user.username == post.owner %}
-				<button onclick="">Delete Post</button>
+				<button onclick="document.location.href='/post?post={{ post.key.urlsafe() }}&action=delete'; return false;">Delete Post</button>
 			{% endif %}
 		{% endif %}
             
