@@ -112,7 +112,7 @@ class PostHandler(Handler):
 
         postKey.delete() 
         print "deleted post redirecting"
-        self.redirect("/posts")
+        self.redirect("/posts?owner=" + self.user.username)
 
     def doView(self):
 
