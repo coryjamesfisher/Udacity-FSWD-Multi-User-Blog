@@ -3,12 +3,14 @@ import jinja2
 import webapp2
 import hmac
 import urllib
+import math
 from markupsafe import Markup
 
 from google.appengine.ext import ndb
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
+
 
 def urlencode_filter(s):
     if type(s) == 'Markup':
@@ -17,8 +19,10 @@ def urlencode_filter(s):
     s = urllib.quote_plus(s)
     return Markup(s)
 
+
 jinja_env.filters['urlencode'] = urlencode_filter
 SECRET = "you'll never get it out of me"
+
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -53,105 +57,120 @@ class Handler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         username = self.read_secure_cookie('username')
-        self.user = username and User.query(ancestor = ndb.Key("User", "Junk")).filter(User.username == username).get()
+        self.user = username and User.query(ancestor=ndb.Key("User", "Junk")).filter(User.username == username).get()
+
 
 # ENDPOINTS
+
+
 class PostListHandler(Handler):
     def get(self):
-
         ancestor = None
-        pageTitle = "All Posts - All Authors"
+        page_title = "All Posts - All Authors"
 
         if self.request.get("owner", ""):
             ancestor = ndb.Key(User, self.request.get("owner"))
-            pageTitle = "All Posts - " + self.request.get("owner")
-            
-        query = Post.query(ancestor = ancestor).order(-Post.created)
-        posts = query.fetch(10, offset = 0)
-        self.render("list.html", posts=posts, pageTitle = pageTitle)
+            page_title = "All Posts - " + self.request.get("owner")
 
+        items_per_page = 10
+        page = self.request.get("page", "1")
+
+        if not page.isdigit():
+            page = 1
+        else:
+            page = int(page)
+
+        offset = (page - 1) * items_per_page
+        query = Post.query(ancestor=ancestor).order(-Post.created)
+        posts = query.fetch(limit=10, offset=offset)
+        post_count = Post.query(ancestor=ancestor).count()
+        max_page = int(math.ceil(float(post_count) / items_per_page))
+        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page, pageTitle=page_title, owner=self.request.get("owner", ""))
 
 class PostHandler(Handler):
+    def do_create(self):
 
-    def doCreate(self):
-        postForm = PostForm(None)
-        self.render("post/edit.html", postForm = postForm)
-
-    def doEdit(self):
-        
-        if not self.request.get("post"):
+        if not self.user:
             # TODO DEFINE ERROR
             self.redirect("/posts")
+            return
 
-        postKey = ndb.Key(urlsafe = self.request.get("post"))
-        post = postKey.get()
+        post_form = PostForm(None)
+        self.render("post/edit.html", postForm=post_form)
 
-        if post.owner != self.user.username:
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
-
-        postForm = PostForm(None)
-        postForm.title = post.title
-        postForm.content = post.content
-        postForm.post = self.request.get("post")
-
-        self.render("post/edit.html", postForm = postForm)
-
-    def doDelete(self):
+    def do_edit(self):
 
         if not self.request.get("post"):
             # TODO DEFINE ERROR
             self.redirect("/posts")
 
-        postKey = ndb.Key(urlsafe = self.request.get("post"))
-        post = postKey.get()
+        post_key = ndb.Key(urlsafe=self.request.get("post"))
+        post = post_key.get()
 
         if post.owner != self.user.username:
             # TODO DEFINE ERROR
             self.redirect("/posts")
 
-        postKey.delete() 
+        post_form = PostForm(None)
+        post_form.title = post.title
+        post_form.content = post.content
+        post_form.post = self.request.get("post")
+
+        self.render("post/edit.html", postForm=post_form)
+
+    def do_delete(self):
+
+        if not self.request.get("post"):
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
+
+        post_key = ndb.Key(urlsafe=self.request.get("post"))
+        post = post_key.get()
+
+        if post.owner != self.user.username:
+            # TODO DEFINE ERROR
+            self.redirect("/posts")
+
+        post_key.delete()
         print "deleted post redirecting"
         self.redirect("/posts?owner=" + self.user.username)
 
-    def doView(self):
+    def do_view(self):
 
         if not self.request.get("post"):
             # TODO DEFINE ERROR
             self.redirect("/posts")
 
-        postKey = ndb.Key(urlsafe = self.request.get("post"))
-        post = postKey.get()
-        comments = Comment.query(ancestor = postKey).fetch(100)
+        post_key = ndb.Key(urlsafe=self.request.get("post"))
+        post = post_key.get()
+        comments = Comment.query(ancestor=post_key).fetch(100)
 
-        self.render("post/view.html", post = post, comments = comments)
-
+        self.render("post/view.html", post=post, comments=comments)
 
     def get(self):
         action = self.request.get("action", "")
 
         if action == 'create':
-            return self.doCreate()
+            return self.do_create()
 
         if action == "edit":
-            return self.doEdit()
+            return self.do_edit()
 
         if action == "delete":
-            return self.doDelete()
+            return self.do_delete()
 
-
-	return self.doView()
+        return self.do_view()
 
     def post(self):
-        postForm = PostForm(self.request.POST)
+        post_form = PostForm(self.request.POST)
 
-        if not postForm.validate():
-            self.render("post/edit.html", postForm = postForm)
+        if not post_form.validate():
+            self.render("post/edit.html", postForm=post_form)
             return
 
-        if postForm.post:
-            postKey = ndb.Key(urlsafe = self.request.get("post"))
-            post = postKey.get()
+        if post_form.post:
+            post_key = ndb.Key(urlsafe=self.request.get("post"))
+            post = post_key.get()
 
             if post.owner != self.user.username:
                 # todo add error message
@@ -159,77 +178,81 @@ class PostHandler(Handler):
                 return
 
         else:
-            userKey = ndb.Key(User, self.user.username)
-            postId = ndb.Model.allocate_ids(size=1, parent=userKey)[0]
-            postKey = ndb.Key(Post, postId, parent = userKey)
-            post = Post(owner = self.user.username, key = postKey)
+            user_key = ndb.Key(User, self.user.username)
+            post_id = ndb.Model.allocate_ids(size=1, parent=user_key)[0]
+            post_key = ndb.Key(Post, post_id, parent=user_key)
+            post = Post(owner=self.user.username, key=post_key)
 
-        post.title = postForm.title 
-        post.content = postForm.content
+        post.title = post_form.title
+        post.content = post_form.content
         post.put()
         self.redirect('/posts?owner=' + self.user.username)
-        #self.redirect('/post?post=' + post.key.urlsafe())
+        self.redirect('/post?post=' + post_key.urlsafe())
 
 
 class CommentHandler(Handler):
     def post(self):
-        commentForm = CommentForm(self.request.POST)
+        comment_form = CommentForm(self.request.POST)
 
-        if not commentForm.validate():
-
+        if not comment_form.validate():
             print "crappy error validating comment form"
             return
 
-        comment  = commentForm.toModel()
+        comment = comment_form.to_model()
         comment.owner = self.user.username
 
-	postKey = ndb.Key(urlsafe = commentForm.post)
-        commentId = ndb.Model.allocate_ids(size=1, parent=postKey)[0]
-        comment.key = ndb.Key("Comment", commentId, parent=postKey)
+        post_key = ndb.Key(urlsafe=comment_form.post)
+        comment_id = ndb.Model.allocate_ids(size=1, parent=post_key)[0]
+        comment.key = ndb.Key("Comment", comment_id, parent=post_key)
 
         comment.put()
-        self.redirect('/post?post=' + commentForm.post)
+        self.redirect('/post?post=' + comment_form.post)
 
 
 class RegisterHandler(Handler):
     def get(self):
-        self.render("register.html", registerForm = RegisterForm(None))
+        self.render("register.html", registerForm=RegisterForm(None))
 
     def post(self):
-        registerForm = RegisterForm(self.request.POST)
+        register_form = RegisterForm(self.request.POST)
 
-        if not registerForm.validate():
-		self.render("register.html", registerForm = registerForm) 
-                return
+        if not register_form.validate():
+            self.render("register.html", registerForm=register_form)
+            return
 
-	registerForm.toModel().put()
-        self.make_secure_cookie('username', registerForm.username)
+        register_form.to_model().put()
+        self.make_secure_cookie('username', register_form.username)
         self.redirect('/posts')
+
 
 class LoginHandler(Handler):
     def get(self):
-        self.render("login.html", loginForm = LoginForm(None))
+        self.render("login.html", loginForm=LoginForm(None))
 
     def post(self):
-        loginForm = LoginForm(self.request.POST)
+        login_form = LoginForm(self.request.POST)
 
-        if not loginForm.validate():
-            self.render("login.html", loginForm = loginForm)
+        if not login_form.validate():
+            self.render("login.html", loginForm=login_form)
             return
 
-        user = User.query(ancestor = ndb.Key("User", "Junk")).filter(User.username == loginForm.username, User.password == hmac.new(SECRET, loginForm.password).hexdigest()).get()
+        user = User.query(ancestor=ndb.Key("User", "Junk")).filter(
+            User.username == login_form.username,
+            User.password == hmac.new(SECRET, login_form.password).hexdigest()).get()
 
         if not user:
-            loginForm.username_error = "Incorrect username or password"
-            self.render("login.html", loginForm = loginForm)
+            login_form.username_error = "Incorrect username or password"
+            self.render("login.html", loginForm=login_form)
         else:
             self.make_secure_cookie('username', user.username)
             self.redirect('/posts')
+
 
 class LogoutHandler(Handler):
     def get(self):
         self.delete_cookie('username')
         self.redirect('/login')
+
 
 # FORMS
 class RegisterForm:
@@ -240,13 +263,13 @@ class RegisterForm:
         self.password_verify_error = ""
 
         self.username = ""
-        self.email    = ""
+        self.email = ""
         self.password = ""
         self.password_verify = ""
 
         if post_data is not None:
             self.username = post_data.get("username", "")
-            self.email    = post_data.get("email", "")
+            self.email = post_data.get("email", "")
             self.password = post_data.get("password", "")
             self.password_verify = post_data.get("password_verify", "")
 
@@ -270,8 +293,10 @@ class RegisterForm:
 
         return valid
 
-    def toModel(self):
-        return User(username = self.username, email = self.email, password = hmac.new(SECRET, self.password).hexdigest(), id = self.username, parent = ndb.Key("User", "Junk"))
+    def to_model(self):
+        return User(username=self.username, email=self.email, password=hmac.new(SECRET, self.password).hexdigest(),
+                    id=self.username, parent=ndb.Key("User", "Junk"))
+
 
 class LoginForm:
     def __init__(self, post_data):
@@ -285,7 +310,7 @@ class LoginForm:
         if post_data is not None:
             self.username = post_data.get("username", "")
             self.password = post_data.get("password", "")
-            
+
     def validate(self):
 
         valid = True
@@ -293,10 +318,11 @@ class LoginForm:
             self.username_error = "Enter a Username"
             valid = False
         if self.password == "":
-            self.password_error = "Enter a Password" 
+            self.password_error = "Enter a Password"
             valid = False
 
         return valid
+
 
 class PostForm:
     def __init__(self, post_data):
@@ -306,7 +332,7 @@ class PostForm:
         self.post = ""
         self.title_error = ""
         self.content_error = ""
-        
+
         if post_data is not None:
             self.title = post_data.get("title", "")
             self.content = post_data.get("content", "")
@@ -324,10 +350,11 @@ class PostForm:
 
         return valid
 
+
 class CommentForm:
     def __init__(self, post_data):
 
-        self.content = "" 
+        self.content = ""
         self.post = ""
         self.content_error = ""
         self.general_error = ""
@@ -347,30 +374,37 @@ class CommentForm:
 
         return valid
 
-    def toModel(self):
-        return Comment(content = self.content, post = self.post)
+    def to_model(self):
+
+        # Use eventual consistency as comments could happen rapidly
+        return Comment(content=self.content, post=self.post)
+
 
 # MODELS
 class User(ndb.Model):
-    username = ndb.StringProperty(required = True)
-    email = ndb.StringProperty(required = True)
-    password = ndb.StringProperty(required = True)
-    created = ndb.DateTimeProperty(auto_now_add = True)
-    modified = ndb.DateTimeProperty(auto_now = True)
+    username = ndb.StringProperty(required=True)
+    email = ndb.StringProperty(required=True)
+    password = ndb.StringProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    modified = ndb.DateTimeProperty(auto_now=True)
+
 
 class Post(ndb.Model):
-    title = ndb.StringProperty(required = True)
-    content = ndb.TextProperty(required = True)
-    owner = ndb.StringProperty(required = True)
-    created = ndb.DateTimeProperty(auto_now_add = True)
-    modified = ndb.DateTimeProperty(auto_now = True)
+    title = ndb.StringProperty(required=True)
+    content = ndb.TextProperty(required=True)
+    owner = ndb.StringProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    modified = ndb.DateTimeProperty(auto_now=True)
+
 
 class Comment(ndb.Model):
-    content = ndb.TextProperty(required = True)
-    owner = ndb.StringProperty(required = True)
-    post = ndb.StringProperty(required = True)
-    created = ndb.DateTimeProperty(auto_now_add = True)
-    modified = ndb.DateTimeProperty(auto_now = True)
+    content = ndb.TextProperty(required=True)
+    owner = ndb.StringProperty(required=True)
+    post = ndb.StringProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    modified = ndb.DateTimeProperty(auto_now=True)
 
 
-app = webapp2.WSGIApplication([('/posts', PostListHandler), ('/post', PostHandler), ('/register', RegisterHandler), ('/login', LoginHandler), ('/logout', LogoutHandler), ('/comment', CommentHandler)], debug=True)
+app = webapp2.WSGIApplication(
+    [('/posts', PostListHandler), ('/post', PostHandler), ('/register', RegisterHandler), ('/login', LoginHandler),
+     ('/logout', LogoutHandler), ('/comment', CommentHandler)], debug=True)

@@ -1,13 +1,36 @@
 {% extends "layout.html" %}
 
 {% block content %}
-{{coolname}}
 <ul>
 	{% for post in posts %}
 	<li>
-                {% set nested = 1 %}
+        {% set nested = 1 %}
 		{% include "post/view.html" %}
 	</li>
 	{% endfor %}
 </ul>
+<section class="pagination">
+{% for i in range(1, maxPage + 1) %}
+
+    {% if i != currentPage %}
+
+        {# Only show pages within 2 of this one #}
+        {% if (currentPage - i)|abs == 1 %}
+        <input type="button" value="{{ i }}" onclick="document.location.href='/posts?page={{ i }}{% if owner %}&owner={{ owner }}{% endif %}';">
+        {% elif maxPage > 2 %}
+            {% if i == 1 %}
+                <input type="button" value="First" onclick="document.location.href='/posts?page={{ i }}{% if owner %}&owner={{ owner }}{% endif %}';">
+                ..
+            {% elif i == maxPage %}
+                ..
+                <input type="button" value="Last" onclick="document.location.href='/posts?page={{ i }}{% if owner %}&owner={{ owner }}{% endif %}';">
+            {% endif %}
+        {% endif %}
+
+    {% else %}
+        { {{ i }} }
+    {% endif %}
+
+{% endfor %}
+</section>
 {% endblock %}
