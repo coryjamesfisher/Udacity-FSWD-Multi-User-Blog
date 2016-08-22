@@ -36,10 +36,12 @@ class Handler(webapp2.RequestHandler):
         self.write(self.render_str(template, **kw))
 
     def check_secure_val(self, cookie_value):
-        return cookie_value
+        val = cookie_value.split('|')[0]
+        if cookie_value == self.make_secure_val(val):
+            return val
 
     def make_secure_val(self, value):
-        return value
+        return "%s|%s" % (value, hmac.new(SECRET, value).hexdigest())
 
     def make_secure_cookie(self, name, value):
         cookie_val = self.make_secure_val(value)
