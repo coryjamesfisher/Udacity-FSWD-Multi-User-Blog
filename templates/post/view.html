@@ -10,7 +10,7 @@
 
 	{% if nested == 1 %}
 	<h3 class="post-heading">
-		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a>
+		{{ post.created.strftime('%Y-%m-%d %I:%M%p') }} -  <a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a>
 		 by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
 	</h3>
 	{% endif %}

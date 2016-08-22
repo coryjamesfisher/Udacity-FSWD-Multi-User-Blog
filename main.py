@@ -412,5 +412,5 @@ class Comment(ndb.Model):
 
 
 app = webapp2.WSGIApplication(
-    [('/posts', PostListHandler), ('/post', PostHandler), ('/register', RegisterHandler), ('/login', LoginHandler),
+    [('/', PostListHandler), ('/posts', PostListHandler), ('/post', PostHandler), ('/register', RegisterHandler), ('/login', LoginHandler),
      ('/logout', LogoutHandler), ('/comment', CommentHandler)], debug=True)
