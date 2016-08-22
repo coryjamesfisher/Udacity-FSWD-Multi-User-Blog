@@ -57,7 +57,7 @@ class Handler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         username = self.read_secure_cookie('username')
-        self.user = username and User.query(ancestor=ndb.Key("User", "Junk")).filter(User.username == username).get()
+        self.user = username and User.query(ancestor=ndb.Key("User", "Grouping")).filter(User.username == username).get()
 
 
 # ENDPOINTS
@@ -236,7 +236,7 @@ class LoginHandler(Handler):
             self.render("login.html", loginForm=login_form)
             return
 
-        user = User.query(ancestor=ndb.Key("User", "Junk")).filter(
+        user = User.query(ancestor=ndb.Key("User", "Grouping")).filter(
             User.username == login_form.username,
             User.password == hmac.new(SECRET, login_form.password).hexdigest()).get()
 
@@ -278,6 +278,10 @@ class RegisterForm:
         if self.username == "":
             self.username_error = "Enter a username"
             valid = False
+        elif ndb.Key(User, self.username, parent=ndb.Key("User", "Grouping")).get():
+            self.username_error = "Username is taken"
+            valid = False
+
         if self.email == "":
             self.email_error = "Enter an email"
             valid = False
@@ -295,7 +299,7 @@ class RegisterForm:
 
     def to_model(self):
         return User(username=self.username, email=self.email, password=hmac.new(SECRET, self.password).hexdigest(),
-                    id=self.username, parent=ndb.Key("User", "Junk"))
+                    id=self.username, parent=ndb.Key("User", "Grouping"))
 
 
 class LoginForm:
