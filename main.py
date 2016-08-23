@@ -5,6 +5,7 @@ import hmac
 import urllib
 import math
 import json
+import re
 from markupsafe import Markup
 
 from google.appengine.ext import ndb
@@ -401,8 +402,8 @@ class RegisterForm:
             self.username_error = "Username is taken"
             valid = False
 
-        if self.email == "":
-            self.email_error = "Enter an email"
+        if self.email == "" or not re.match(r"[^@]+@[^@]+\.[^@]+", self.email):
+            self.email_error = "Enter an email in the right format"
             valid = False
         if self.password == "":
             self.password_error = "Enter a password"
