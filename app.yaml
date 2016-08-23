@@ -17,6 +17,9 @@ handlers:
 - url: /post
   script: main.app
 
+- url: /like
+  script: main.app
+
 - url: /comment
   script: main.app
 

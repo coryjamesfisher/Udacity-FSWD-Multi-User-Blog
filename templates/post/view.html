@@ -1,7 +1,10 @@
 {% if not nested %}
 	{% extends "layout.html" %}
 	{% block pageTitle %}
-		<h2 class="page-title">{{ post.title }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a></h2>
+		<h2 class="page-title">
+			{{ post.title }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
+			<i data-post="{{ post.key.urlsafe() }}" class="like-toggle fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i>
+		 </h2>
 	{% endblock %}
 {% endif %}
 
@@ -10,9 +13,9 @@
 
 	{% if nested == 1 %}
 	<h3 class="post-heading">
-		{{ post.created.strftime('%Y-%m-%d %I:%M%p') }} -  <a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a>
-		 by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
+		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a> <i data-post="{{ post.key.urlsafe() }}" class="like-toggle fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i>
 	</h3>
+	<div class="subheading">Created {{ post.created.strftime('%Y-%m-%d %I:%M %p') }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a></div>
 	{% endif %}
 	<section class="post-content">
 		{{ post.content | safe }}
@@ -25,7 +28,7 @@
 			<ul>
 			{% for comment in comments %}
 				<li>
-					{{ comment.created.strftime('%Y-%m-%d %I:%M%p') }} - {{ comment.owner }} - {{ comment.content }}
+					{{ comment.created.strftime('%Y-%m-%d %I:%M %p') }} - {{ comment.owner }} - {{ comment.content }}
 				</li>
 			{% endfor %}
 			</ul>

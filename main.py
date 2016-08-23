@@ -85,9 +85,12 @@ class PostListHandler(Handler):
         offset = (page - 1) * items_per_page
         query = Post.query(ancestor=ancestor).order(-Post.created)
         posts = query.fetch(limit=10, offset=offset)
+
+        likedPosts = self.user.getLikes()
+
         post_count = Post.query(ancestor=ancestor).count()
         max_page = int(math.ceil(float(post_count) / items_per_page))
-        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page, pageTitle=page_title, owner=self.request.get("owner", ""))
+        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page, pageTitle=page_title, owner=self.request.get("owner", ""), likedPosts = likedPosts)
 
 class PostHandler(Handler):
     def do_create(self):
@@ -147,7 +150,11 @@ class PostHandler(Handler):
         post = post_key.get()
         comments = Comment.query(ancestor=post_key).fetch(100)
 
-        self.render("post/view.html", post=post, comments=comments)
+        likedPosts = {}
+        if Like.query(Like.owner == self.user.username and Like.post == post_key.urlsafe() and Like.liked == True).get():
+            likedPosts[post_key.urlsafe()] = True
+
+        self.render("post/view.html", post=post, comments=comments, likedPosts = likedPosts)
 
     def get(self):
         action = self.request.get("action", "")
@@ -255,6 +262,19 @@ class LogoutHandler(Handler):
         self.delete_cookie('username')
         self.redirect('/login')
 
+
+class LikeHandler(Handler):
+    def post(self):
+        likeKey = ndb.Key(Like, self.user.username + "|" + self.request.get('post'))
+        like = likeKey.get()
+        if not like:
+            like = Like(owner=self.user.username, post=self.request.get('post'), liked=True, key=likeKey)
+        elif like.liked is True:
+            like.liked = False
+        else:
+            like.liked = True
+
+        like.put()
 
 # FORMS
 class RegisterForm:
@@ -394,6 +414,17 @@ class User(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
 
+    def getLikes(self):
+
+        likedPosts = {}
+        allLikes = Like.query(Like.owner == self.username).fetch()
+        for like in allLikes:
+
+            if like.liked == True:
+                likedPosts[like.post] = True
+
+        return likedPosts
+
 
 class Post(ndb.Model):
     title = ndb.StringProperty(required=True)
@@ -410,7 +441,11 @@ class Comment(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
 
+class Like(ndb.Model):
+    owner = ndb.StringProperty(required = True)
+    post = ndb.StringProperty(required = True)
+    liked = ndb.BooleanProperty(required = True)
 
 app = webapp2.WSGIApplication(
     [('/', PostListHandler), ('/posts', PostListHandler), ('/post', PostHandler), ('/register', RegisterHandler), ('/login', LoginHandler),
-     ('/logout', LogoutHandler), ('/comment', CommentHandler)], debug=True)
+     ('/logout', LogoutHandler), ('/comment', CommentHandler), ('/like', LikeHandler)], debug=True)

@@ -5,6 +5,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css">
+		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" crossorigin="anonymous">
 		<style>
 			body { font-size: 16px; max-width: 1140px; margin-left: auto; margin-right: auto; }
                         main { clear: both; }
@@ -25,8 +26,9 @@
                         .page-title { float: left; width: 100%; font-size: 1.5em; font-weight: bold; }
                         .user-tray { float: right; width: 50%; text-align: right; }
 
-			.post-heading .post-link { text-decoration: none; }
+			.post-heading .post-link { text-decoration: none; font-weight: bold; font-size: 1.5em; }
 			.post-heading .post-link:hover { text-decoration: underline; }
+			.subheading { font-size: 1em; }
 			.post { margin-bottom: 5em; }
 			.user-tray .user-own-posts-link { text-decoration: none; }
 			.user-tray .user-own-posts-link:hover { text-decoration: underline; }
@@ -73,5 +75,53 @@
 		<footer>
 			&copy; 2016 Cory Fisher
 		</footer>
+
+        <script>
+
+            document.addEventListener("DOMContentLoaded", function(event) {
+
+                var toggleIndicator = function(element) {
+                    if (element.classList.contains('fa-thumbs-up')) {
+                        element.classList.add('fa-thumbs-o-up');
+                        element.classList.remove('fa-thumbs-up');
+                    } else {
+                        element.classList.add('fa-thumbs-up');
+                        element.classList.remove('fa-thumbs-o-up');
+                    }
+                };
+
+                var toggleLike = function (event) {
+
+                    toggleIndicator(event.target);
+                    var xmlhttp = new XMLHttpRequest();
+
+                    xmlhttp.onreadystatechange = function() {
+
+                        // Capture target in closure
+                        var element = event.target;
+
+                        if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+                           if (xmlhttp.status == 200) {
+                               // Do nothing since we assumed success :) We are sneaky
+                           }
+                           else {
+                               // Oh no an error
+                               // Revert previous change
+                               toggleIndicator(element);
+                           }
+                        }
+                    };
+
+                    xmlhttp.open("POST", "/like?post=" + event.target.getAttribute("data-post"), true);
+                    xmlhttp.send();
+                };
+
+                var likeToggles = document.getElementsByClassName('like-toggle');
+                for (var i = 0; i < likeToggles.length; i++) {
+                    likeToggles[i].addEventListener('click', toggleLike);
+                }
+            });
+
+        </script>
 	</body>
 </html>
