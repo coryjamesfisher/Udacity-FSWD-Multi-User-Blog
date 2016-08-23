@@ -80,10 +80,13 @@ class PostListHandler(Handler):
         ancestor = None
         page_title = "All Posts - All Authors"
 
+        # If there is an owner in the query string display just that
+        # user's posts. Also change the title a bit.
         if self.request.get("owner", ""):
             ancestor = ndb.Key(User, self.request.get("owner"))
             page_title = "All Posts - " + self.request.get("owner")
 
+        # Implement Paging
         items_per_page = 10
         page = self.request.get("page", "1")
 
@@ -96,19 +99,20 @@ class PostListHandler(Handler):
         query = Post.query(ancestor=ancestor).order(-Post.created)
         posts = query.fetch(limit=10, offset=offset)
 
+        # Get the total # of posts and divide by items per page for the total number of pages
+        post_count = Post.query(ancestor=ancestor).count()
+        max_page = int(math.ceil(float(post_count) / items_per_page))
+
         # Get like count using eventual consistency
         for post in posts:
-            print post.key.urlsafe();
             post.likeCount = Like.query(Like.post == post.key.urlsafe()).filter(Like.liked == True).count()
-            print post.likeCount
 
+        # Get the posts that this user has liked.
         likedPosts = {}
         if self.user:
             likedPosts = self.user.getLikes()
 
-        post_count = Post.query(ancestor=ancestor).count()
-        max_page = int(math.ceil(float(post_count) / items_per_page))
-
+        # Render error message from another page.
         errorMessage = ""
         if self.request.get("error"):
             errorMessage = ERROR_DICT[int(self.request.get("error"))]
@@ -176,18 +180,25 @@ class PostHandler(Handler):
             self.redirect("/posts?error=3")
             return
 
+        # Get the post
         post_key = ndb.Key(urlsafe=self.request.get("post"))
         post = post_key.get()
+
+        # Get comments for the post
         comments = Comment.query(ancestor=post_key).fetch(100)
 
+        # See if the user liked this post.
         likedPosts = {}
         if Like.query(Like.owner == self.user.username and Like.post == post_key.urlsafe()).filter(Like.liked == True).get():
             likedPosts[post_key.urlsafe()] = True
 
+        # Get like count for the post
         post.likeCount = Like.query(Like.post == post_key.urlsafe()).filter(Like.liked == True).count()
         self.render("post/view.html", post=post, comments=comments, likedPosts = likedPosts)
 
     def get(self):
+
+        # This method is a hub for all of the individual post related actions
         action = self.request.get("action", "")
 
         if action == 'create':
@@ -202,28 +213,39 @@ class PostHandler(Handler):
         return self.do_view()
 
     def post(self):
+
         post_form = PostForm(self.request.POST)
+
+        if not self.user:
+            self.redirect(ACCESS_DENIED_URL)
+            return
 
         if not post_form.validate():
             self.render("post/edit.html", postForm=post_form)
             return
 
+        # Existing post
         if post_form.post:
             post_key = ndb.Key(urlsafe=self.request.get("post"))
             post = post_key.get()
 
+            # If this user doesn't own the post they can't modify it
             if post.owner != self.user.username:
                 self.redirect('/post?post=' + post.key.urlsafe() + '&error=2')
                 return
 
         else:
+
+            # New post
             user_key = ndb.Key(User, self.user.username)
             post_id = ndb.Model.allocate_ids(size=1, parent=user_key)[0]
             post_key = ndb.Key(Post, post_id, parent=user_key)
             post = Post(owner=self.user.username, key=post_key)
 
+        # Whether new or existing update title and content
         post.title = post_form.title
         post.content = post_form.content
+
         post.put()
 
         self.redirect('/post?post=' + post_key.urlsafe())
@@ -490,7 +512,7 @@ class User(ndb.Model):
 
 class Post(ndb.Model):
 
-    # Like count managed outside of the actual model for eventual consistency
+    # Like count managed outside of the model for eventual consistency
     likeCount = 0
 
     title = ndb.StringProperty(required=True)
