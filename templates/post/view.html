@@ -1,9 +1,14 @@
+{# Nested layout is used for the listing view
+   There are a few differences such as where the title is displayed and
+   whether or not the comments are displayed #}
+
 {% if not nested %}
 	{% extends "layout.html" %}
 	{% block pageTitle %}
 		<h2 class="page-title">
 			{{ post.title }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
-			<i data-post="{{ post.key.urlsafe() }}" class="{% if user and user.username != post.owner %}like-toggle{% else %}disabled{% endif %} fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i> <span class="like-count">{{ post.likeCount }}</span>
+			<i data-post="{{ post.key.urlsafe() }}" class="{% if user and user.username != post.owner %}like-toggle{% else %}disabled{% endif %} fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i>
+            <span class="like-count">{{ post.likeCount }}</span>
 		 </h2>
 	{% endblock %}
 {% endif %}
@@ -13,7 +18,8 @@
 
 	{% if nested == 1 %}
 	<h3 class="post-heading">
-		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a> <i data-post="{{ post.key.urlsafe() }}" class="{% if user and user.username != post.owner %}like-toggle{% else %}disabled{% endif %} fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i> <span class="like-count">{{ post.likeCount }}</span>
+		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a> <i data-post="{{ post.key.urlsafe() }}" class="{% if user and user.username != post.owner %}like-toggle{% else %}disabled{% endif %} fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i>
+        <span class="like-count">{{ post.likeCount }}</span>
 	</h3>
 	<div class="subheading">Created {{ post.created.strftime('%Y-%m-%d %I:%M %p') }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a></div>
 	{% endif %}
