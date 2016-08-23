@@ -6,42 +6,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css">
 		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" crossorigin="anonymous">
-		<style>
-			body { font-size: 16px; max-width: 1140px; margin-left: auto; margin-right: auto; }
-                        main { clear: both; }
-			.registration-form label { width: 6em; text-align: right; display: inline-block; }
-			.registration-form fieldset { width: 31.25em; }
-			.registration-form input[type=submit] { margin-left: 16em; }
-
-			.login-form label { width: 6em; text-align: right; display: inline-block; }
-			.login-form fieldset { width: 31.25em; }
-			.login-form input[type=submit] { margin-left: 16em; }
-
-			.post-form label { width: 6em; text-align: right; display: inline-block; }
-			.post-form fieldset { width: 31.25em; }
-			.post-form input[type=submit] { margin-left: 16em; }
-
-			header { width: 100%; float: left; background-color: yellow }
-            header h1 { float: left; width: 50%; font-size: 2em; font-weight: bold; }
-            .page-title { float: left; width: 100%; font-size: 1.5em; font-weight: bold; }
-            .user-tray { float: right; width: 50%; text-align: right; }
-            .error { color: red; }
-
-			.post-heading .post-link { text-decoration: none; font-weight: bold; font-size: 1.5em; }
-			.post-heading .post-link:hover { text-decoration: underline; }
-			.subheading { font-size: 1em; }
-			.post { margin-bottom: 5em; }
-            .fa.disabled { color: gray; }
-
-			.user-tray .user-own-posts-link { text-decoration: none; }
-			.user-tray .user-own-posts-link:hover { text-decoration: underline; }
-
-			.main-menu { float: left; width: 100%; font-size: 1.2em; font-weight: bold; background-color: lightblue; }
-			.main-menu a { margin-left: 10px; }
-
-			.post-actions textarea { width: 100%; }
-
-		</style>
+        <link rel="stylesheet" href="/css/styles.css">
 	</head>
 	<body>
 		<header>
@@ -49,11 +14,11 @@
 					
 			<section class="user-tray">
 				{% if user %}
-                                    Welcome, <a class="user-own-posts-link" href="/posts?owner={{ user.username }}">{{ user.username }}</a> <a href="/logout">Logout</a>
-                                {% else %}
-                                    Welcome guest. Please <a href="/register">Register</a> or <a href="/login">Login</a> to post.
-                                {% endif %}
-                        </section>
+                    Welcome, <a class="user-own-posts-link" href="/posts?owner={{ user.username }}">{{ user.username }}</a> <a href="/logout">Logout</a>
+                {% else %}
+                    Welcome guest. Please <a href="/register">Register</a> or <a href="/login">Login</a> to post.
+                {% endif %}
+                </section>
 
 			<nav class="main-menu">
 				<a href="/posts">All Posts</a>
@@ -85,56 +50,6 @@
 			&copy; 2016 Cory Fisher
 		</footer>
 
-        <script>
-
-            document.addEventListener("DOMContentLoaded", function(event) {
-
-                var toggleIndicator = function(element) {
-
-                    var likeCountEl = element.nextElementSibling;
-                    var count = parseInt(likeCountEl.innerHTML);
-                    if (element.classList.contains('fa-thumbs-up')) {
-                        element.classList.add('fa-thumbs-o-up');
-                        element.classList.remove('fa-thumbs-up');
-                        likeCountEl.innerHTML = count - 1;
-                    } else {
-                        element.classList.add('fa-thumbs-up');
-                        element.classList.remove('fa-thumbs-o-up');
-                        likeCountEl.innerHTML = count + 1;
-                    }
-                };
-
-                var toggleLike = function (event) {
-
-                    toggleIndicator(event.target);
-                    var xmlhttp = new XMLHttpRequest();
-
-                    xmlhttp.onreadystatechange = function() {
-
-                        // Capture target in closure
-                        var element = event.target;
-
-                        if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
-
-                            var response = JSON.parse(xmlhttp.responseText);
-
-                            // If response was not success flip it back.
-                            if (!response || !response.hasOwnProperty("success") || response.success == false) {
-                                toggleIndicator(element);
-                            }
-                        }
-                    };
-
-                    xmlhttp.open("POST", "/like?post=" + event.target.getAttribute("data-post"), true);
-                    xmlhttp.send();
-                };
-
-                var likeToggles = document.getElementsByClassName('like-toggle');
-                for (var i = 0; i < likeToggles.length; i++) {
-                    likeToggles[i].addEventListener('click', toggleLike);
-                }
-            });
-
-        </script>
+        <script src="/js/app.js"></script>
 	</body>
 </html>

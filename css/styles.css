@@ -1,0 +1,131 @@
+/* LAYOUT/GLOBAL STYLES */
+body {
+    font-size: 16px;
+    max-width: 1140px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+main {
+    clear: both;
+}
+
+header {
+    width: 100%;
+    float: left;
+    background-color: yellow
+}
+
+header h1 {
+    float: left;
+    width: 50%;
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.page-title {
+    float: left;
+    width: 100%;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.user-tray {
+    float: right;
+    width: 50%;
+    text-align: right;
+}
+
+.user-tray .user-own-posts-link {
+    text-decoration: none;
+}
+
+.user-tray .user-own-posts-link:hover {
+    text-decoration: underline;
+}
+
+.main-menu {
+    float: left;
+    width: 100%;
+    font-size: 1.2em;
+    font-weight: bold;
+    background-color: lightblue;
+}
+
+.main-menu a {
+    margin-left: 10px;
+}
+
+.error {
+    color: red;
+}
+
+/* REGISTRATION/LOGIN STYLES */
+.registration-form label {
+    width: 6em;
+    text-align: right;
+    display: inline-block;
+}
+
+.registration-form fieldset {
+    width: 31.25em;
+}
+
+.registration-form input[type=submit] {
+    margin-left: 16em;
+}
+
+.login-form label {
+    width: 6em;
+    text-align: right;
+    display: inline-block;
+}
+
+.login-form fieldset {
+    width: 31.25em;
+}
+
+.login-form input[type=submit] {
+    margin-left: 16em;
+}
+
+/* POST STYLES */
+.post-form label {
+    width: 6em;
+    text-align: right;
+    display: inline-block;
+}
+
+.post-form fieldset {
+    width: 31.25em;
+}
+
+.post-form input[type=submit] {
+    margin-left: 16em;
+}
+
+.post-heading .post-link {
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.5em;
+}
+
+.post-heading .post-link:hover {
+    text-decoration: underline;
+}
+
+.subheading {
+    font-size: 1em;
+}
+
+.post {
+    margin-bottom: 5em;
+}
+
+.fa.disabled {
+    color: gray;
+}
+
+.post-actions textarea {
+    width: 100%;
+}

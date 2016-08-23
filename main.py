@@ -9,10 +9,13 @@ from markupsafe import Markup
 
 from google.appengine.ext import ndb
 
+# Jinja templating setup
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
 
 
+# Method added as a jinja filter for urlencode.
+# This is only necessary because app engine is behind on their version.
 def urlencode_filter(s):
     if type(s) == 'Markup':
         s = s.unescape()
@@ -20,10 +23,12 @@ def urlencode_filter(s):
     s = urllib.quote_plus(s)
     return Markup(s)
 
-
 jinja_env.filters['urlencode'] = urlencode_filter
+
+# CONSTANTS
 SECRET = "you'll never get it out of me"
 ACCESS_DENIED_URL = "/login?error=1"
+USER_STATIC_KEY = ndb.Key("User", "Grouping")
 
 ERROR_DICT = {
     1: "Please authenticate to access this feature",
@@ -34,6 +39,7 @@ ERROR_DICT = {
 }
 
 
+# HANDLERS
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -69,7 +75,9 @@ class Handler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         username = self.read_secure_cookie('username')
-        self.user = username and User.query(ancestor=ndb.Key("User", "Grouping")).filter(User.username == username).get()
+
+        # Note: ancestor is static to allow strong consistency for users
+        self.user = username and User.query(ancestor=USER_STATIC_KEY).filter(User.username == username).get()
 
 
 # ENDPOINTS
@@ -108,16 +116,19 @@ class PostListHandler(Handler):
             post.likeCount = Like.query(Like.post == post.key.urlsafe()).filter(Like.liked == True).count()
 
         # Get the posts that this user has liked.
-        likedPosts = {}
+        liked_posts = {}
         if self.user:
-            likedPosts = self.user.getLikes()
+            liked_posts = self.user.get_likes()
 
         # Render error message from another page.
-        errorMessage = ""
+        error_message = ""
         if self.request.get("error"):
-            errorMessage = ERROR_DICT[int(self.request.get("error"))]
+            error_message = ERROR_DICT[int(self.request.get("error"))]
 
-        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page, pageTitle=page_title, owner=self.request.get("owner", ""), likedPosts = likedPosts, errorMessage = errorMessage)
+        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page,
+                    pageTitle=page_title, owner=self.request.get("owner", ""), likedPosts=liked_posts,
+                    errorMessage=error_message)
+
 
 class PostHandler(Handler):
     def do_create(self):
@@ -188,13 +199,14 @@ class PostHandler(Handler):
         comments = Comment.query(ancestor=post_key).fetch(100)
 
         # See if the user liked this post.
-        likedPosts = {}
-        if Like.query(Like.owner == self.user.username and Like.post == post_key.urlsafe()).filter(Like.liked == True).get():
-            likedPosts[post_key.urlsafe()] = True
+        liked_posts = {}
+        if Like.query(Like.owner == self.user.username and
+           Like.post == post_key.urlsafe()).filter(Like.liked == True).get():
+            liked_posts[post_key.urlsafe()] = True
 
         # Get like count for the post
         post.likeCount = Like.query(Like.post == post_key.urlsafe()).filter(Like.liked == True).count()
-        self.render("post/view.html", post=post, comments=comments, likedPosts = likedPosts)
+        self.render("post/view.html", post=post, comments=comments, likedPosts=liked_posts)
 
     def get(self):
 
@@ -293,11 +305,11 @@ class RegisterHandler(Handler):
 class LoginHandler(Handler):
     def get(self):
 
-        errorMessage = ""
+        error_message = ""
         if self.request.get("error"):
-            errorMessage = ERROR_DICT[int(self.request.get("error"))]
+            error_message = ERROR_DICT[int(self.request.get("error"))]
 
-        self.render("login.html", loginForm=LoginForm(None), errorMessage=errorMessage)
+        self.render("login.html", loginForm=LoginForm(None), errorMessage=error_message)
 
     def post(self):
         login_form = LoginForm(self.request.POST)
@@ -306,7 +318,7 @@ class LoginHandler(Handler):
             self.render("login.html", loginForm=login_form)
             return
 
-        user = User.query(ancestor=ndb.Key("User", "Grouping")).filter(
+        user = User.query(ancestor=USER_STATIC_KEY).filter(
             User.username == login_form.username,
             User.password == hmac.new(SECRET, login_form.password).hexdigest()).get()
 
@@ -327,7 +339,7 @@ class LogoutHandler(Handler):
 class LikeHandler(Handler):
     def post(self):
 
-        # Responsd to ajax with json
+        # Respond to ajax with json
         self.response.headers['Content-Type'] = 'application/json'
 
         # Make sure the post exists
@@ -346,19 +358,20 @@ class LikeHandler(Handler):
             return
 
         # Get the like key based on post & username.
-        likeKey = ndb.Key(Like, self.user.username + "|" + self.request.get('post'))
-        like = likeKey.get()
+        like_key = ndb.Key(Like, self.user.username + "|" + self.request.get('post'))
+        like = like_key.get()
 
         # If no record create one. Otherwise just toggle the liked property.
         if not like:
-            like = Like(owner=self.user.username, post=self.request.get('post'), liked=True, key=likeKey)
+            like = Like(owner=self.user.username, post=self.request.get('post'), liked=True, key=like_key)
         elif like.liked is True:
             like.liked = False
         else:
             like.liked = True
 
         like.put()
-        self.response.out.write(json.dumps({"success": True}));
+        self.response.out.write(json.dumps({"success": True}))
+
 
 # FORMS
 class RegisterForm:
@@ -384,7 +397,7 @@ class RegisterForm:
         if self.username == "":
             self.username_error = "Enter a username"
             valid = False
-        elif ndb.Key(User, self.username, parent=ndb.Key("User", "Grouping")).get():
+        elif ndb.Key(User, self.username, parent=USER_STATIC_KEY).get():
             self.username_error = "Username is taken"
             valid = False
 
@@ -405,7 +418,7 @@ class RegisterForm:
 
     def to_model(self):
         return User(username=self.username, email=self.email, password=hmac.new(SECRET, self.password).hexdigest(),
-                    id=self.username, parent=ndb.Key("User", "Grouping"))
+                    id=self.username, parent=USER_STATIC_KEY)
 
 
 class LoginForm:
@@ -480,7 +493,7 @@ class CommentForm:
             self.content_error = "Enter a comment"
             valid = False
         if self.post == "":
-            self.general_error = "A system error has occured. Please try again later"
+            self.general_error = "A system error has occurred. Please try again later"
 
         return valid
 
@@ -498,16 +511,16 @@ class User(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
 
-    def getLikes(self):
+    def get_likes(self):
 
-        likedPosts = {}
-        allLikes = Like.query(Like.owner == self.username).fetch()
-        for like in allLikes:
+        liked_posts = {}
+        all_likes = Like.query(Like.owner == self.username).fetch()
+        for like in all_likes:
 
-            if like.liked == True:
-                likedPosts[like.post] = True
+            if like.liked is True:
+                liked_posts[like.post] = True
 
-        return likedPosts
+        return liked_posts
 
 
 class Post(ndb.Model):
@@ -529,11 +542,14 @@ class Comment(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
 
+
 class Like(ndb.Model):
-    owner = ndb.StringProperty(required = True)
-    post = ndb.StringProperty(required = True)
-    liked = ndb.BooleanProperty(required = True)
+    owner = ndb.StringProperty(required=True)
+    post = ndb.StringProperty(required=True)
+    liked = ndb.BooleanProperty(required=True)
+
 
 app = webapp2.WSGIApplication(
-    [('/', PostListHandler), ('/posts', PostListHandler), ('/post', PostHandler), ('/register', RegisterHandler), ('/login', LoginHandler),
-     ('/logout', LogoutHandler), ('/comment', CommentHandler), ('/like', LikeHandler)], debug=True)
+    [('/', PostListHandler), ('/posts', PostListHandler), ('/post', PostHandler),
+     ('/register', RegisterHandler), ('/login', LoginHandler), ('/logout', LogoutHandler),
+     ('/comment', CommentHandler), ('/like', LikeHandler)], debug=True)
