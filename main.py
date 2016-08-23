@@ -4,6 +4,7 @@ import webapp2
 import hmac
 import urllib
 import math
+import json
 from markupsafe import Markup
 
 from google.appengine.ext import ndb
@@ -22,6 +23,15 @@ def urlencode_filter(s):
 
 jinja_env.filters['urlencode'] = urlencode_filter
 SECRET = "you'll never get it out of me"
+ACCESS_DENIED_URL = "/login?error=1"
+
+ERROR_DICT = {
+    1: "Please authenticate to access this feature",
+    2: "You are not authorized to modify this entity",
+    3: "Please select a post",
+    4: "Please enter a comment",
+    5: "You may not like your own posts"
+}
 
 
 class Handler(webapp2.RequestHandler):
@@ -86,18 +96,30 @@ class PostListHandler(Handler):
         query = Post.query(ancestor=ancestor).order(-Post.created)
         posts = query.fetch(limit=10, offset=offset)
 
-        likedPosts = self.user.getLikes()
+        # Get like count using eventual consistency
+        for post in posts:
+            print post.key.urlsafe();
+            post.likeCount = Like.query(Like.post == post.key.urlsafe()).filter(Like.liked == True).count()
+            print post.likeCount
+
+        likedPosts = {}
+        if self.user:
+            likedPosts = self.user.getLikes()
 
         post_count = Post.query(ancestor=ancestor).count()
         max_page = int(math.ceil(float(post_count) / items_per_page))
-        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page, pageTitle=page_title, owner=self.request.get("owner", ""), likedPosts = likedPosts)
+
+        errorMessage = ""
+        if self.request.get("error"):
+            errorMessage = ERROR_DICT[int(self.request.get("error"))]
+
+        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page, pageTitle=page_title, owner=self.request.get("owner", ""), likedPosts = likedPosts, errorMessage = errorMessage)
 
 class PostHandler(Handler):
     def do_create(self):
 
         if not self.user:
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
+            self.redirect(ACCESS_DENIED_URL)
             return
 
         post_form = PostForm(None)
@@ -105,16 +127,20 @@ class PostHandler(Handler):
 
     def do_edit(self):
 
+        if not self.user:
+            self.redirect(ACCESS_DENIED_URL)
+            return
+
         if not self.request.get("post"):
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
+            self.redirect("/posts?error=3")
+            return
 
         post_key = ndb.Key(urlsafe=self.request.get("post"))
         post = post_key.get()
 
         if post.owner != self.user.username:
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
+            self.redirect("/posts?error=2")
+            return
 
         post_form = PostForm(None)
         post_form.title = post.title
@@ -125,35 +151,40 @@ class PostHandler(Handler):
 
     def do_delete(self):
 
+        if not self.user:
+            self.redirect(ACCESS_DENIED_URL)
+            return
+
         if not self.request.get("post"):
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
+            self.redirect("/posts?error=3")
+            return
 
         post_key = ndb.Key(urlsafe=self.request.get("post"))
         post = post_key.get()
 
         if post.owner != self.user.username:
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
+            self.redirect("/posts?error=2")
+            return
 
         post_key.delete()
-        print "deleted post redirecting"
+
         self.redirect("/posts?owner=" + self.user.username)
 
     def do_view(self):
 
         if not self.request.get("post"):
-            # TODO DEFINE ERROR
-            self.redirect("/posts")
+            self.redirect("/posts?error=3")
+            return
 
         post_key = ndb.Key(urlsafe=self.request.get("post"))
         post = post_key.get()
         comments = Comment.query(ancestor=post_key).fetch(100)
 
         likedPosts = {}
-        if Like.query(Like.owner == self.user.username and Like.post == post_key.urlsafe() and Like.liked == True).get():
+        if Like.query(Like.owner == self.user.username and Like.post == post_key.urlsafe()).filter(Like.liked == True).get():
             likedPosts[post_key.urlsafe()] = True
 
+        post.likeCount = Like.query(Like.post == post_key.urlsafe()).filter(Like.liked == True).count()
         self.render("post/view.html", post=post, comments=comments, likedPosts = likedPosts)
 
     def get(self):
@@ -182,8 +213,7 @@ class PostHandler(Handler):
             post = post_key.get()
 
             if post.owner != self.user.username:
-                # todo add error message
-                self.redirect('/post?post=' + post.key.urlsafe())
+                self.redirect('/post?post=' + post.key.urlsafe() + '&error=2')
                 return
 
         else:
@@ -195,7 +225,7 @@ class PostHandler(Handler):
         post.title = post_form.title
         post.content = post_form.content
         post.put()
-        self.redirect('/posts?owner=' + self.user.username)
+
         self.redirect('/post?post=' + post_key.urlsafe())
 
 
@@ -203,8 +233,12 @@ class CommentHandler(Handler):
     def post(self):
         comment_form = CommentForm(self.request.POST)
 
+        if not self.user:
+            self.redirect(ACCESS_DENIED_URL)
+            return
+
         if not comment_form.validate():
-            print "crappy error validating comment form"
+            self.redirect("/post?post=" + comment_form.post + "&error=4")
             return
 
         comment = comment_form.to_model()
@@ -236,7 +270,12 @@ class RegisterHandler(Handler):
 
 class LoginHandler(Handler):
     def get(self):
-        self.render("login.html", loginForm=LoginForm(None))
+
+        errorMessage = ""
+        if self.request.get("error"):
+            errorMessage = ERROR_DICT[int(self.request.get("error"))]
+
+        self.render("login.html", loginForm=LoginForm(None), errorMessage=errorMessage)
 
     def post(self):
         login_form = LoginForm(self.request.POST)
@@ -265,8 +304,30 @@ class LogoutHandler(Handler):
 
 class LikeHandler(Handler):
     def post(self):
+
+        # Responsd to ajax with json
+        self.response.headers['Content-Type'] = 'application/json'
+
+        # Make sure the post exists
+        post = ndb.Key(urlsafe=self.request.get('post')).get()
+
+        error = False
+        if not self.user:
+            error = ERROR_DICT[1]
+        if not post:
+            error = ERROR_DICT[3]
+        elif post.owner == self.user.username:
+            error = ERROR_DICT[5]
+
+        if error:
+            self.response.out.write(json.dumps({"error": error}))
+            return
+
+        # Get the like key based on post & username.
         likeKey = ndb.Key(Like, self.user.username + "|" + self.request.get('post'))
         like = likeKey.get()
+
+        # If no record create one. Otherwise just toggle the liked property.
         if not like:
             like = Like(owner=self.user.username, post=self.request.get('post'), liked=True, key=likeKey)
         elif like.liked is True:
@@ -275,6 +336,7 @@ class LikeHandler(Handler):
             like.liked = True
 
         like.put()
+        self.response.out.write(json.dumps({"success": True}));
 
 # FORMS
 class RegisterForm:
@@ -427,6 +489,10 @@ class User(ndb.Model):
 
 
 class Post(ndb.Model):
+
+    # Like count managed outside of the actual model for eventual consistency
+    likeCount = 0
+
     title = ndb.StringProperty(required=True)
     content = ndb.TextProperty(required=True)
     owner = ndb.StringProperty(required=True)

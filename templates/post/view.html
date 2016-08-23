@@ -3,7 +3,7 @@
 	{% block pageTitle %}
 		<h2 class="page-title">
 			{{ post.title }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a>
-			<i data-post="{{ post.key.urlsafe() }}" class="like-toggle fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i>
+			<i data-post="{{ post.key.urlsafe() }}" class="{% if user and user.username != post.owner %}like-toggle{% else %}disabled{% endif %} fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i> <span class="like-count">{{ post.likeCount }}</span>
 		 </h2>
 	{% endblock %}
 {% endif %}
@@ -13,7 +13,7 @@
 
 	{% if nested == 1 %}
 	<h3 class="post-heading">
-		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a> <i data-post="{{ post.key.urlsafe() }}" class="like-toggle fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i>
+		<a class="post-link" href="/post?post={{ post.key.urlsafe() }}">{{ post.title }}</a> <i data-post="{{ post.key.urlsafe() }}" class="{% if user and user.username != post.owner %}like-toggle{% else %}disabled{% endif %} fa {% if likedPosts[post.key.urlsafe()] %}fa-thumbs-up{% else %}fa-thumbs-o-up{% endif %}"></i> <span class="like-count">{{ post.likeCount }}</span>
 	</h3>
 	<div class="subheading">Created {{ post.created.strftime('%Y-%m-%d %I:%M %p') }} by <a href="/posts?owner={{ post.owner }}">{{ post.owner }}</a></div>
 	{% endif %}
