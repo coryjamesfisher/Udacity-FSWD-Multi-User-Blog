@@ -306,6 +306,29 @@ class CommentHandler(Handler):
         comment.put()
         self.redirect('/post?post=' + comment_form.post)
 
+    def delete(self):
+
+        # Respond to ajax with json
+        self.response.headers['Content-Type'] = 'application/json'
+
+        error = ""
+        comment_key_string = self.request.get("comment_key")
+        if not comment_key_string:
+            error = "Please select a comment to delete"
+        else:
+            comment_key = ndb.Key(urlsafe=comment_key_string)
+            comment = comment_key.get()
+            if comment:
+                comment_key.delete()
+            else:
+                error = "Comment not found"
+
+        if error:
+            self.response.out.write(json.dumps({"error": error}))
+        else:
+            self.response.out.write(json.dumps({"success": True}))
+
+
 
 class RegisterHandler(Handler):
     """Handler for user registration actions"""

@@ -34,7 +34,7 @@
 			<ul>
 			{% for comment in comments %}
 				<li>
-					{{ comment.created.strftime('%Y-%m-%d %I:%M %p') }} - {{ comment.owner }} - {{ comment.content }}
+					{{ comment.created.strftime('%Y-%m-%d %I:%M %p') }} - {{ comment.owner }} - {{ comment.content }} <i data-comment-key="{{ comment.key.urlsafe() }}" class="edit-comment-trigger fa fa-pencil"></i> <i data-comment-key="{{ comment.key.urlsafe() }}" class="delete-comment-trigger fa fa-trash"></i>
 				</li>
 			{% endfor %}
 			</ul>
