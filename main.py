@@ -13,7 +13,8 @@ from globals import *
 
 # Jinja templating setup
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                               autoescape=True)
 
 
 # Method added as a jinja filter for urlencode.
@@ -71,13 +72,18 @@ class Handler(webapp2.RequestHandler):
         username = self.read_secure_cookie('username')
 
         # Note: ancestor is static to allow strong consistency for users
-        self.user = username and User.query(ancestor=USER_STATIC_KEY).filter(User.username == username).get()
+        self.user = username and \
+            User.query(ancestor=USER_STATIC_KEY)\
+                .filter(User.username == username).get()
+
 
 class PostListHandler(Handler):
     """Handler for listing posts"""
 
     def get(self):
-        """Gets all posts optionally filtered by owner ordered by created datetime desc"""
+        """
+        Gets all posts optionally filtered by owner and
+        ordered by created datetime desc"""
 
         ancestor = None
         page_title = "All Posts - All Authors"
@@ -101,13 +107,15 @@ class PostListHandler(Handler):
         query = Post.query(ancestor=ancestor).order(-Post.created)
         posts = query.fetch(limit=10, offset=offset)
 
-        # Get the total # of posts and divide by items per page for the total number of pages
+        # Get the total # of posts and divide by items per page
+        # yielding the total number of pages
         post_count = Post.query(ancestor=ancestor).count()
         max_page = int(math.ceil(float(post_count) / items_per_page))
 
         # Get like count using eventual consistency
         for post in posts:
-            post.likeCount = Like.query(Like.post == post.key.urlsafe()).filter(Like.liked == True).count()
+            post.likeCount = Like.query(Like.post == post.key.urlsafe())\
+                .filter(Like.liked == True).count()
 
         # Get the posts that this user has liked.
         liked_posts = {}
@@ -119,8 +127,10 @@ class PostListHandler(Handler):
         if self.request.get("error"):
             error_message = ERROR_DICT[int(self.request.get("error"))]
 
-        self.render("list.html", posts=posts, currentPage=page, maxPage=max_page,
-                    pageTitle=page_title, owner=self.request.get("owner", ""), likedPosts=liked_posts,
+        self.render("list.html", posts=posts, currentPage=page,
+                    maxPage=max_page, pageTitle=page_title,
+                    owner=self.request.get("owner", ""),
+                    likedPosts=liked_posts,
                     errorMessage=error_message)
 
 
@@ -205,11 +215,14 @@ class PostHandler(Handler):
             liked_posts[post_key.urlsafe()] = True
 
         # Get like count for the post
-        post.likeCount = Like.query(Like.post == post_key.urlsafe()).filter(Like.liked == True).count()
-        self.render("post/view.html", post=post, comments=comments, likedPosts=liked_posts)
+        post.likeCount = Like.query(Like.post == post_key.urlsafe())\
+            .filter(Like.liked == True).count()
+        self.render("post/view.html", post=post, comments=comments,
+                    likedPosts=liked_posts)
 
     def get(self):
-        """This method is a hub for all of the individual post related actions"""
+        """
+        This method is a hub for all of the individual post related actions"""
 
         action = self.request.get("action", "")
 
@@ -326,7 +339,8 @@ class LoginHandler(Handler):
         if self.request.get("error"):
             error_message = ERROR_DICT[int(self.request.get("error"))]
 
-        self.render("login.html", loginForm=LoginForm(None), errorMessage=error_message)
+        self.render("login.html", loginForm=LoginForm(None),
+                    errorMessage=error_message)
 
     def post(self):
         """Handle login form submission"""
@@ -339,7 +353,8 @@ class LoginHandler(Handler):
 
         user = User.query(ancestor=USER_STATIC_KEY).filter(
             User.username == login_form.username,
-            User.password == hmac.new(SECRET, login_form.password).hexdigest()).get()
+            User.password == hmac
+                .new(SECRET, login_form.password).hexdigest()).get()
 
         if not user:
             login_form.username_error = "Incorrect username or password"
@@ -362,7 +377,8 @@ class LikeHandler(Handler):
 
     def post(self):
         """
-        This method will toggle a post between liked and unliked states for a user
+        This method will toggle a post between liked and unliked
+        states for a user
         Outputs:
             json
         """
@@ -386,12 +402,15 @@ class LikeHandler(Handler):
             return
 
         # Get the like key based on post & username.
-        like_key = ndb.Key(Like, self.user.username + "|" + self.request.get('post'))
+        like_key = ndb.Key(Like,
+                           self.user.username + "|" + self.request.get('post'))
         like = like_key.get()
 
         # If no record create one. Otherwise just toggle the liked property.
         if not like:
-            like = Like(owner=self.user.username, post=self.request.get('post'), liked=True, key=like_key)
+            like = Like(owner=self.user.username,
+                        post=self.request.get('post'),
+                        liked=True, key=like_key)
         elif like.liked is True:
             like.liked = False
         else:
@@ -402,6 +421,7 @@ class LikeHandler(Handler):
 
 
 app = webapp2.WSGIApplication(
-    [('/', PostListHandler), ('/posts', PostListHandler), ('/post', PostHandler),
-     ('/register', RegisterHandler), ('/login', LoginHandler), ('/logout', LogoutHandler),
+    [('/', PostListHandler), ('/posts', PostListHandler),
+     ('/post', PostHandler), ('/register', RegisterHandler),
+     ('/login', LoginHandler), ('/logout', LogoutHandler),
      ('/comment', CommentHandler), ('/like', LikeHandler)], debug=True)
