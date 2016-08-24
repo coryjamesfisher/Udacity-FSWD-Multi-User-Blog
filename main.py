@@ -210,8 +210,10 @@ class PostHandler(Handler):
 
         # See if the user liked this post.
         liked_posts = {}
-        if Like.query(Like.owner == self.user.username and
-           Like.post == post_key.urlsafe()).filter(Like.liked == True).get():
+        if self.user and \
+                Like.query(Like.owner == self.user.username and
+                           Like.post == post_key.urlsafe())\
+                .filter(Like.liked == True).get():
             liked_posts[post_key.urlsafe()] = True
 
         # Get like count for the post

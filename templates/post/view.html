@@ -34,7 +34,7 @@
 			<ul>
 			{% for comment in comments %}
 				<li data-comment-key="{{ comment.key.urlsafe() }}">
-					{{ comment.created.strftime('%Y-%m-%d %I:%M %p') }} - {{ comment.owner }} - <span class="comment-content">{{ comment.content }}</span> {% if comment.owner == user.username %}<i class="edit-comment-trigger fa fa-pencil"></i> <i class="delete-comment-trigger fa fa-trash"></i>{% endif %}
+					{{ comment.created.strftime('%Y-%m-%d %I:%M %p') }} - {{ comment.owner }} - <span class="comment-content">{{ comment.content }}</span> {% if user and comment.owner == user.username %}<i class="edit-comment-trigger fa fa-pencil"></i> <i class="delete-comment-trigger fa fa-trash"></i>{% endif %}
 				</li>
 			{% endfor %}
 			</ul>
