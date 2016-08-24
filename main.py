@@ -5,11 +5,11 @@ import hmac
 import urllib
 import math
 import json
-import re
 from markupsafe import Markup
-
 from google.appengine.ext import ndb
+from forms import RegisterForm, LoginForm, PostForm, CommentForm
 from models import User, Post, Comment, Like
+from globals import *
 
 # Jinja templating setup
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -27,22 +27,10 @@ def urlencode_filter(s):
 
 jinja_env.filters['urlencode'] = urlencode_filter
 
-# CONSTANTS
-SECRET = "you'll never get it out of me"
-ACCESS_DENIED_URL = "/login?error=1"
-USER_STATIC_KEY = ndb.Key("User", "Grouping")
 
-ERROR_DICT = {
-    1: "Please authenticate to access this feature",
-    2: "You are not authorized to modify this entity",
-    3: "Please select a post",
-    4: "Please enter a comment",
-    5: "You may not like your own posts"
-}
-
-
-# HANDLERS
 class Handler(webapp2.RequestHandler):
+    """Base handler which all other handlers extend from"""
+
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
@@ -75,18 +63,22 @@ class Handler(webapp2.RequestHandler):
         self.response.headers.add_header('Set-Cookie', name + "=;")
 
     def initialize(self, *a, **kw):
+        """This method is called when the object is created"""
+
         webapp2.RequestHandler.initialize(self, *a, **kw)
+
+        # Use this as an opportunity to see if the user is authenticated
         username = self.read_secure_cookie('username')
 
         # Note: ancestor is static to allow strong consistency for users
         self.user = username and User.query(ancestor=USER_STATIC_KEY).filter(User.username == username).get()
 
-
-# ENDPOINTS
-
-
 class PostListHandler(Handler):
+    """Handler for listing posts"""
+
     def get(self):
+        """Gets all posts optionally filtered by owner ordered by created datetime desc"""
+
         ancestor = None
         page_title = "All Posts - All Authors"
 
@@ -133,7 +125,10 @@ class PostListHandler(Handler):
 
 
 class PostHandler(Handler):
+    """Handler for single post related actions"""
+
     def do_create(self):
+        """Shows the create post form"""
 
         if not self.user:
             self.redirect(ACCESS_DENIED_URL)
@@ -143,6 +138,7 @@ class PostHandler(Handler):
         self.render("post/edit.html", postForm=post_form)
 
     def do_edit(self):
+        """Edit an existing post"""
 
         if not self.user:
             self.redirect(ACCESS_DENIED_URL)
@@ -167,6 +163,7 @@ class PostHandler(Handler):
         self.render("post/edit.html", postForm=post_form)
 
     def do_delete(self):
+        """Delete a post"""
 
         if not self.user:
             self.redirect(ACCESS_DENIED_URL)
@@ -188,6 +185,7 @@ class PostHandler(Handler):
         self.redirect("/posts?owner=" + self.user.username)
 
     def do_view(self):
+        """View a post"""
 
         if not self.request.get("post"):
             self.redirect("/posts?error=3")
@@ -211,8 +209,8 @@ class PostHandler(Handler):
         self.render("post/view.html", post=post, comments=comments, likedPosts=liked_posts)
 
     def get(self):
+        """This method is a hub for all of the individual post related actions"""
 
-        # This method is a hub for all of the individual post related actions
         action = self.request.get("action", "")
 
         if action == 'create':
@@ -227,6 +225,7 @@ class PostHandler(Handler):
         return self.do_view()
 
     def post(self):
+        """Handle modification/creation of a post"""
 
         post_form = PostForm(self.request.POST)
 
@@ -266,7 +265,14 @@ class PostHandler(Handler):
 
 
 class CommentHandler(Handler):
+    """Handler for comment related actions"""
+
     def post(self):
+        """
+        Handle creating or updating a comment
+        returns:
+            json"""
+
         comment_form = CommentForm(self.request.POST)
 
         if not self.user:
@@ -289,10 +295,16 @@ class CommentHandler(Handler):
 
 
 class RegisterHandler(Handler):
+    """Handler for user registration actions"""
+
     def get(self):
+        """Render the user registration form"""
+
         self.render("register.html", registerForm=RegisterForm(None))
 
     def post(self):
+        """Handle user registration form submission"""
+
         register_form = RegisterForm(self.request.POST)
 
         if not register_form.validate():
@@ -305,7 +317,10 @@ class RegisterHandler(Handler):
 
 
 class LoginHandler(Handler):
+    """Handler for login actions"""
+
     def get(self):
+        """Render the login form"""
 
         error_message = ""
         if self.request.get("error"):
@@ -314,6 +329,8 @@ class LoginHandler(Handler):
         self.render("login.html", loginForm=LoginForm(None), errorMessage=error_message)
 
     def post(self):
+        """Handle login form submission"""
+
         login_form = LoginForm(self.request.POST)
 
         if not login_form.validate():
@@ -333,13 +350,22 @@ class LoginHandler(Handler):
 
 
 class LogoutHandler(Handler):
+    """Handler for logout action"""
+
     def get(self):
         self.delete_cookie('username')
         self.redirect('/login')
 
 
 class LikeHandler(Handler):
+    """Handler for liking/unlinking posts"""
+
     def post(self):
+        """
+        This method will toggle a post between liked and unliked states for a user
+        Outputs:
+            json
+        """
 
         # Respond to ajax with json
         self.response.headers['Content-Type'] = 'application/json'
@@ -373,137 +399,6 @@ class LikeHandler(Handler):
 
         like.put()
         self.response.out.write(json.dumps({"success": True}))
-
-
-# FORMS
-class RegisterForm:
-    def __init__(self, post_data):
-        self.username_error = ""
-        self.email_error = ""
-        self.password_error = ""
-        self.password_verify_error = ""
-
-        self.username = ""
-        self.email = ""
-        self.password = ""
-        self.password_verify = ""
-
-        if post_data is not None:
-            self.username = post_data.get("username", "")
-            self.email = post_data.get("email", "")
-            self.password = post_data.get("password", "")
-            self.password_verify = post_data.get("password_verify", "")
-
-    def validate(self):
-        valid = True
-        if self.username == "":
-            self.username_error = "Enter a username"
-            valid = False
-        elif ndb.Key(User, self.username, parent=USER_STATIC_KEY).get():
-            self.username_error = "Username is taken"
-            valid = False
-
-        if self.email == "" or not re.match(r"[^@]+@[^@]+\.[^@]+", self.email):
-            self.email_error = "Enter an email in the right format"
-            valid = False
-        if self.password == "":
-            self.password_error = "Enter a password"
-            valid = False
-        elif self.password_verify == "":
-            self.password_verify_error = "Enter password verification"
-            valid = False
-        elif self.password_verify != self.password:
-            self.password_verify_error = "Passwords must match"
-            valid = False
-
-        return valid
-
-    def to_model(self):
-        return User(username=self.username, email=self.email, password=hmac.new(SECRET, self.password).hexdigest(),
-                    id=self.username, parent=USER_STATIC_KEY)
-
-
-class LoginForm:
-    def __init__(self, post_data):
-
-        self.username_error = ""
-        self.password_error = ""
-
-        self.username = ""
-        self.password = ""
-
-        if post_data is not None:
-            self.username = post_data.get("username", "")
-            self.password = post_data.get("password", "")
-
-    def validate(self):
-
-        valid = True
-        if self.username == "":
-            self.username_error = "Enter a Username"
-            valid = False
-        if self.password == "":
-            self.password_error = "Enter a Password"
-            valid = False
-
-        return valid
-
-
-class PostForm:
-    def __init__(self, post_data):
-
-        self.title = ""
-        self.content = ""
-        self.post = ""
-        self.title_error = ""
-        self.content_error = ""
-
-        if post_data is not None:
-            self.title = post_data.get("title", "")
-            self.content = post_data.get("content", "")
-            self.post = post_data.get("post", "")
-
-    def validate(self):
-
-        valid = True
-        if self.title == "":
-            self.title_error = "Enter a title"
-            valid = False
-        if self.content == "":
-            self.content_error = "Enter some content"
-            valid = False
-
-        return valid
-
-
-class CommentForm:
-    def __init__(self, post_data):
-
-        self.content = ""
-        self.post = ""
-        self.content_error = ""
-        self.general_error = ""
-
-        if post_data is not None:
-            self.content = post_data.get("content", "")
-            self.post = post_data.get("post", "")
-
-    def validate(self):
-
-        valid = True
-        if self.content == "":
-            self.content_error = "Enter a comment"
-            valid = False
-        if self.post == "":
-            self.general_error = "A system error has occurred. Please try again later"
-
-        return valid
-
-    def to_model(self):
-
-        # Use eventual consistency as comments could happen rapidly
-        return Comment(content=self.content, post=self.post)
-
 
 
 app = webapp2.WSGIApplication(
