@@ -49,7 +49,9 @@ class RegisterForm:
         return valid
 
     def to_model(self):
-        return User(username=self.username, email=self.email, password=hmac.new(SECRET, self.password).hexdigest(),
+        return User(username=self.username,
+                    email=self.email,
+                    password=hmac.new(SECRET, self.password).hexdigest(),
                     id=self.username, parent=USER_STATIC_KEY)
 
 
@@ -117,12 +119,15 @@ class CommentForm:
 
         self.content = ""
         self.post = ""
+        self.comment = ""
+
         self.content_error = ""
         self.general_error = ""
 
         if post_data is not None:
             self.content = post_data.get("content", "")
             self.post = post_data.get("post", "")
+            self.comment = post_data.get("comment", "")
 
     def validate(self):
 
@@ -131,11 +136,19 @@ class CommentForm:
             self.content_error = "Enter a comment"
             valid = False
         if self.post == "":
-            self.general_error = "A system error has occurred. Please try again later"
+            self.general_error = \
+                "A system error has occurred. Please try again later"
 
         return valid
 
     def to_model(self):
 
-        # Use eventual consistency as comments could happen rapidly
+        # Here we use eventual consistency as comments could happen rapidly
+        # First case is modification of existing comment
+        if self.comment:
+            comment = ndb.Key(urlsafe=self.comment).get()
+            comment.content = self.content
+            return comment
+
+        # New comment
         return Comment(content=self.content, post=self.post)

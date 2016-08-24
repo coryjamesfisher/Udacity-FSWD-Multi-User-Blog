@@ -297,11 +297,23 @@ class CommentHandler(Handler):
             return
 
         comment = comment_form.to_model()
-        comment.owner = self.user.username
+
+        # Editing a post is done via ajax, while creating is not.
+        if comment_form.comment:
+
+            self.response.headers['Content-Type'] = 'application/json'
+            if comment.owner != self.user.username:
+                self.write(json.dumps({"error": ERROR_DICT[6]}))
+                return
+
+            comment.put()
+            self.write(json.dumps({"success": True}))
+            return
 
         post_key = ndb.Key(urlsafe=comment_form.post)
         comment_id = ndb.Model.allocate_ids(size=1, parent=post_key)[0]
         comment.key = ndb.Key("Comment", comment_id, parent=post_key)
+        comment.owner = self.user.username
 
         comment.put()
         self.redirect('/post?post=' + comment_form.post)
@@ -311,23 +323,25 @@ class CommentHandler(Handler):
         # Respond to ajax with json
         self.response.headers['Content-Type'] = 'application/json'
 
-        error = ""
         comment_key_string = self.request.get("comment_key")
         if not comment_key_string:
-            error = "Please select a comment to delete"
-        else:
-            comment_key = ndb.Key(urlsafe=comment_key_string)
-            comment = comment_key.get()
-            if comment:
-                comment_key.delete()
-            else:
-                error = "Comment not found"
+            self.write(json.dumps({"error": ERROR_DICT[7]}))
+            return
 
-        if error:
-            self.response.out.write(json.dumps({"error": error}))
-        else:
-            self.response.out.write(json.dumps({"success": True}))
+        comment_key = ndb.Key(urlsafe=comment_key_string)
+        comment = comment_key.get()
+        if comment:
+            if comment.owner != self.user.username:
+                self.write(json.dumps({"error": ERROR_DICT[6]}))
+                return
 
+            comment_key.delete()
+        else:
+            self.write(json.dumps({"error": ERROR_DICT[8]}))
+            return
+
+        comment_key.delete()
+        self.response.out.write(json.dumps({"success": True}))
 
 
 class RegisterHandler(Handler):
